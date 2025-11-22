@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Budget Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body class="auth-page">
+    <div class="auth-container" id="auth-container">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <p id="loginMessage" style="color:red;"></p>
+            <button type="submit">Login</button>
+        </form>
+        <p>Don't have an account? <a href="./signup.html">Signup</a></p>
+    </div>
+<script>
+$(document).ready(function(){
+    $("#loginForm").submit(function(e){
+        e.preventDefault();
+        let email = $("#email").val().trim();
+        let password = $("#password").val();
+
+        let users = JSON.parse(localStorage.getItem("users")) || [];
+
+        // Check if user email exists first
+        let userExists = users.some(u => u.email === email);
+
+        if(!userExists){
+            $("#loginMessage").text("User does not exist. Please signup.");
+            return;
+        }
+
+        // Validate password for existing user
+        let user = users.find(u => u.email === email && u.password === password);
+
+        if(user){
+            localStorage.setItem("loggedInUser", email);
+            window.location.href = "dashboard.html";
+        } else {
+            $("#loginMessage").text("Incorrect password!");
+        }
+    });
+});
+</script>
+
+</body>
+</html>

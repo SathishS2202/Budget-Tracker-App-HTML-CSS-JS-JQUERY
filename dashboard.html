@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - Budget Tracker</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+
+<body>
+    <header class="header">
+        <h2>Budget Tracker</h2>
+        <button id="logoutBtn">Logout</button>
+    </header>
+    
+    <div class="container">
+        <div class="hero-card">
+    <h2>Welcome Back, <span id="welcomeUser"></span>!</h2>
+    <p>Manage your income and expenses easily. Keep track of your finances in one place.</p>
+   </div>
+
+        <div class="summary">
+    <div class="box income">
+        <i class="fa fa-arrow-down"></i>
+        <div>Income</div>
+        <span id="totalIncome">0</span>
+    </div>
+    <div class="box expense">
+        <i class="fa fa-arrow-up"></i>
+        <div>Expense</div>
+        <span id="totalExpense">0</span>
+    </div>
+    <div class="box balance">
+        <i class="fa fa-wallet"></i>
+        <div>Balance</div>
+        <span id="balance">0</span>
+    </div>
+</div>
+<div class="filter-buttons">
+    <button class="filter-btn" data-type="all">All</button>
+    <button class="filter-btn" data-type="income">Income</button>
+    <button class="filter-btn" data-type="expense">Expense</button>
+</div>
+
+
+        <button id="addTransactionBtn">Add Transaction</button>
+    
+      <div id="transactionPopup" class="popup">
+  <div class="popup-content">
+    <h3>Add Transaction</h3>
+    
+    <div id="formError" style="color:red; margin-bottom:10px; display:none;"></div>
+
+    <input type="text" id="title" placeholder="Title (Income / Expense)" required>
+    <input type="number" id="amount" placeholder="Amount" required>
+    <input type="text" id="category" placeholder="Category (Food, Salary...)" required>
+    <input type="date" id="date">
+
+    <button id="saveTransactionBtn">Save</button>
+    <button id="cancelPopupBtn" class="cancel">Cancel</button>
+  </div>
+</div>
+
+ <div class="transactionTableContainer">
+    <table class="transactionTable" id="transactionTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="transactionList">
+            <!-- Transactions will be appended here -->
+        </tbody>
+    </table>
+</div>
+<div class="chartContainer" style="width: 100%; max-width: 600px; margin: 30px auto;">
+    <canvas id="incomeExpenseChart"></canvas>
+</div>
+
+
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+$(document).ready(function() {
+    let currentUserEmail = localStorage.getItem("loggedInUser");
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+    let user = users.find(u => u.email === currentUserEmail);
+
+    if(!currentUserEmail) {
+        window.location.href = "index.html";
+    }
+
+    $("#welcomeUser").text(user.name);
+
+    $("#logoutBtn").click(function() {
+        localStorage.removeItem("loggedInUser");
+        window.location.href = "index.html";
+    });
+
+    // Load transactions and calculate summary on page load
+    loadTransactions();
+    calculateSummary();
+});
+
+
+
+// OPEN POPUP
+$("#addTransactionBtn").click(function(){
+    $("#transactionPopup").show();
+});
+
+// CLOSE POPUP
+$("#cancelPopupBtn").click(function(){
+    $("#transactionPopup").hide();
+});
+
+$("#saveTransactionBtn").off("click").click(function(){
+    let title = $("#title").val().trim();
+    let amount = parseFloat($("#amount").val());
+    let category = $("#category").val().trim();
+    let date = $("#date").val() || new Date().toISOString().split("T")[0];
+    let errorDiv = $("#formError");
+
+    // Reset error message
+    errorDiv.text('').hide();
+
+    // Validation
+    if(title === "" || amount === "" || isNaN(amount) || category === "") {
+        errorDiv.text("Please fill in all fields correctly").show();
+        return;
+    }
+
+    let titleLower = title.toLowerCase();
+    if(titleLower !== "income" && titleLower !== "expense") {
+        errorDiv.text('Title must be "Income" or "Expense"').show();
+        return;
+    }
+
+    let users = JSON.parse(localStorage.getItem("users"));
+    let loggedEmail = localStorage.getItem("loggedInUser");
+    let user = users.find(u => u.email === loggedEmail);
+
+    let transaction = {
+        id: Date.now(),
+        title: title,
+        amount: Math.abs(amount),  // ensure positive
+        category: category,
+        date: date
+    };
+
+    user.transactions.push(transaction);
+    localStorage.setItem("users", JSON.stringify(users));
+
+    // Clear form inputs
+    $("#title").val('');
+    $("#amount").val('');
+    $("#category").val('');
+    $("#date").val('');
+    errorDiv.hide();
+
+    $("#transactionPopup").hide();
+    loadTransactions();
+    calculateSummary();
+});
+
+
+
+function loadTransactions() {
+    let users = JSON.parse(localStorage.getItem("users"));
+    let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
+
+    $("#transactionList").empty();
+
+  user.transactions.forEach(tr => {
+    $("#transactionList").append(`
+        <tr>
+            <td>${tr.date}</td>
+            <td>${tr.title}</td>
+            <td>${tr.category}</td>
+            <td class="${tr.amount > 0 ? 'amount-positive' : 'amount-negative'}">₹${tr.amount}</td>
+            <td>
+                <button class="edit-btn" onclick="editTransaction(${tr.id})">Edit</button>
+                <button class="delete-btn" onclick="deleteTransaction(${tr.id})">Delete</button>
+            </td>
+        </tr>
+    `);
+});
+
+    calculateSummary();
+}
+
+
+function calculateSummary() {
+    let users = JSON.parse(localStorage.getItem("users"));
+    let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
+
+    let income = 0, expense = 0;
+
+    user.transactions.forEach(tr => {
+        let titleLower = tr.title.toLowerCase();
+        if (titleLower === "income") {
+            income += tr.amount;
+        } else if (titleLower === "expense") {
+            expense += tr.amount; // assuming amount is positive
+        }
+    });
+
+    let balance = income - expense;
+
+    $("#totalIncome").text(income.toFixed(2));
+    $("#totalExpense").text(expense.toFixed(2));
+    $("#balance").text(balance.toFixed(2));
+    // renderChart(income, expense);
+}
+
+
+
+
+
+function deleteTransaction(id){
+    let users = JSON.parse(localStorage.getItem("users"));
+    let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
+
+    user.transactions = user.transactions.filter(t => t.id !== id);
+
+    localStorage.setItem("users", JSON.stringify(users));
+    loadTransactions();
+    calculateSummary();
+}
+
+function editTransaction(id){
+    let users = JSON.parse(localStorage.getItem("users"));
+    let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
+    let tr = user.transactions.find(t => t.id === id);
+
+    $("#transactionPopup").show();
+    $("#title").val(tr.title);
+    $("#amount").val(tr.amount);
+    $("#category").val(tr.category);
+    $("#date").val(tr.date);
+
+    // Remove previous click handler first
+    $("#saveTransactionBtn").off("click").click(function(){
+        tr.title = $("#title").val().trim();
+        tr.amount = parseFloat($("#amount").val());
+        tr.category = $("#category").val().trim();
+        tr.date = $("#date").val();
+
+        localStorage.setItem("users", JSON.stringify(users));
+        $("#transactionPopup").hide();
+        loadTransactions();
+        calculateSummary();
+
+        resetTransactionForm(); // clear form after editing
+        
+    });
+}
+
+
+function resetTransactionForm() {
+    $("#title").val('');
+    $("#amount").val('');
+    $("#category").val('');
+    $("#date").val('');
+}
+
+$(".filter-btn").click(function(){
+    let type = $(this).data("type");
+    $("#transactionList tr").show();
+    if(type !== "all") {
+        $("#transactionList tr").each(function(){
+            let title = $(this).find("td:eq(1)").text().toLowerCase();
+            if(title !== type) $(this).hide();
+        });
+    }
+});
+
+let chart; // global chart variable
+
+function renderChart(income, expense) {
+    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+
+    if(chart) {
+        chart.destroy(); // destroy previous chart if it exists
+    }
+
+    chart = new Chart(ctx, {
+        type: 'doughnut', // or 'bar', 'pie', etc.
+        data: {
+            labels: ['Income', 'Expense'],
+            datasets: [{
+                label: 'Amount',
+                data: [income, expense],
+                backgroundColor: ['#04AA6D', '#f44336'],
+                borderColor: ['#ffffff', '#ffffff'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+
+
+
+</script>
+
+</body>
+</html>
