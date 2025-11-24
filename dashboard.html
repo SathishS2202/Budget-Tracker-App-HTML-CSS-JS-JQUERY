@@ -4,154 +4,564 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard - Budget Tracker</title>
-<link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f3f3f3;
+}
+
+/* ---------- HEADER ---------- */
+.header {
+    background: #0b7dda;  /* Blue header */
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+}
+
+nav ul li {
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+}
+
+nav ul li:hover { text-decoration: underline; }
+
+/* ---------- CONTAINER ---------- */
+.container { width: 90%; margin: auto; }
+
+.hero-card {
+    background: white;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    border-radius: 10px;
+    box-shadow: 0 0 10px gray;
+}
+
+/* ---------- SUMMARY BOXES ---------- */
+.summary {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.box {
+    flex: 1;
+    padding: 20px;
+    margin: 10px;
+    text-align: center;
+    border-radius: 10px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 0 10px lightgray;
+}
+
+.income { background-color: #04AA6D; }      /* Green */
+.expense { background-color: #f44336; }     /* Red */
+.balance { background-color: #0b7dda; }     /* Blue */
+
+.box i { font-size: 22px; }
+
+/* ---------- BUTTONS ---------- */
+button {
+    padding: 8px 12px;
+    border: none;
+    cursor: pointer;
+    margin-top: 6px;
+    font-weight: 600;
+    border-radius: 5px;
+}
+
+/* Add Transaction */
+#addTransactionBtn { background: #04AA6D; color: white; }
+
+/* Edit / Delete */
+.edit-btn { background: #0b7dda; color: white; }
+.delete-btn { background: #f44336; color: white; }
+
+/* Filter buttons */
+.filter-btn { background: #04AA6D; color: white; margin-right: 5px; }
+
+/* Popup */
+.popup {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,.5);
+}
+
+.popup-content {
+    background: white;
+    width: 350px;
+    margin: 7% auto;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.popup-content h3 {
+    color: #0b7dda;
+    margin-bottom: 15px;
+    font-size: 22px;
+}
+
+.popup-content h3 {
+    color: #0b7dda;
+    margin-bottom: 15px;
+    font-size: 22px;
+}
+
+.profile-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    border: 3px solid #04AA6D;
+    object-fit: cover;
+}
+
+.popup-content input {
+    width: 90%;
+    padding: 10px;
+    margin: 6px 0 2px 0;
+    border-radius: 8px;
+    border: 1px solid #0b7dda;
+    font-size: 15px;
+}
+
+.popup-content button {
+    width: 50%;
+    padding: 10px;
+    margin-top: 10px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.popup-content button:hover {
+    opacity: 0.9;
+}
+
+.eye-icon {
+    position: absolute;
+    right: 25px;
+    top: 120%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #0b7dda;
+}
+
+.error-msg {
+    color: #f44336;
+    font-size: 13px;
+    margin-bottom: 5px;
+    text-align: left;
+}
+
+
+
+/* Popup overlay */
+#transactionPopup {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+/* Popup content box */
+#transactionPopup .popup-content {
+    background: white;
+    width: 380px;
+    max-width: 90%;
+    margin: 7% auto;
+    padding: 25px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+/* Popup heading */
+#transactionPopup h3 {
+    color: #0b7dda;
+    font-size: 22px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+/* Input fields */
+#transactionPopup input {
+    width: 90%;
+    margin: 10px 0;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #0b7dda;
+    font-size: 15px;
+}
+
+/* Save & Cancel buttons */
+#saveTransactionBtn {
+    width: 95%;
+    padding: 12px;
+    margin-top: 10px;
+    background-color: #04AA6D;  /* Green */
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: 0.3s;
+}
+
+#saveTransactionBtn:hover {
+    background-color: #038a5d;  /* Darker green hover */
+}
+
+#cancelPopupBtn {
+    width: 95%;
+    padding: 12px;
+    margin-top: 10px;
+    background-color: #f44336; /* Red */
+    color: white;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: 0.3s;
+}
+
+#cancelPopupBtn:hover {
+    background-color: #c23328;  /* Darker red hover */
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 480px) {
+    #transactionPopup .popup-content {
+        width: 90%;
+        padding: 20px;
+    }
+
+    #transactionPopup input, #saveTransactionBtn, #cancelPopupBtn {
+        width: 100%;
+        padding: 10px;
+    }
+}
+.transactionTable {
+    width: 100%;
+    background: white;
+    padding: 10px;
+    border-collapse: collapse;
+}
+
+.transactionTable th, .transactionTable td {
+    border: 1px solid #0b7dda;
+    padding: 8px;
+    text-align: center;
+}
+
+.amount-positive { color: #04AA6D; font-weight: 600; }
+.amount-negative { color: #f44336; font-weight: 600; }
+.transactionTableContainer {
+    margin-top: 20px;
+    overflow-x: auto;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+}
+
+/* Table styling */
+.transactionTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+}
+
+.transactionTable th, .transactionTable td {
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 1px solid #0b7dda; /* Blue border */
+}
+
+/* Header */
+.transactionTable th {
+    background-color: #0b7dda; /* Blue header */
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Row styling */
+.transactionTable tbody tr:nth-child(even) {
+    background-color: #e8f5f2; /* subtle light green/blue for alternate rows */
+}
+
+.transactionTable tbody tr:hover {
+    background-color: #d6f5e1; /* light green hover for all rows */
+}
+
+/* Amount colors */
+.amount-positive {
+    color: #04AA6D;  /* green for income */
+    font-weight: bold;
+}
+
+.amount-negative {
+    color: #f44336;  /* red for expense */
+    font-weight: bold;
+}
+
+/* Buttons */
+.edit-btn {
+    background-color: #0b7dda;  /* blue edit button */
+    color: white;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+.edit-btn:hover { background-color: #045ea0; }
+
+.delete-btn {
+    background-color: #f44336;  /* red delete button */
+    color: white;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+}
+/* Error messages */
+.error-msg {
+    color: #f44336; /* Red for errors */
+    font-size: 13px;
+    margin-top: 5px;
+    margin-bottom: 6px;
+    text-align: left;
+}
+
+/* Add Transaction popup styling */
+#transactionPopup .popup-content input {
+    width: 90%;
+    margin: 8px 0 2px 0; /* keep small gap for error messages */
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #0b7dda;
+    font-size: 15px;
+}
+
+
+.delete-btn:hover { background-color: #c23328; }
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+    .transactionTable th, .transactionTable td {
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    .edit-btn, .delete-btn {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+}
+
+
+/* Eye icon */
+.eye-icon { position: absolute; right: 38px; margin-top: -32px; cursor: pointer; color: black; }
+
+</style>
 </head>
 
+
 <body>
-    <header class="header">
-        <h2>Budget Tracker</h2>
-        <button id="logoutBtn">Logout</button>
-    </header>
-    
-    <div class="container">
-        <div class="hero-card">
-    <h2>Welcome Back, <span id="welcomeUser"></span>!</h2>
-    <p>Manage your income and expenses easily. Keep track of your finances in one place.</p>
-   </div>
 
-        <div class="summary">
-    <div class="box income">
-        <i class="fa fa-arrow-down"></i>
-        <div>Income</div>
-        <span id="totalIncome">0</span>
+<header class="header">
+    <h2>Budget Tracker</h2>
+
+    <nav>
+        <ul>
+            <li id="logoutBtn">Home</li>
+            <li id="dashboardBtn">Dashboard</li>
+            <li id="profileBtn">My Profile</li>
+            <li id="exportJsonBtn">Export JSON</li>
+            <li id="exportExcelBtn">Export Excel</li>
+            <li id="logoutBtn">Logout</li>
+        </ul>
+    </nav>
+</header>
+
+<div class="container">
+
+    <div class="hero-card">
+        <h2>Welcome Back, <span id="welcomeUser"></span>!</h2>
+        <p>Manage your income and expenses easily. Keep track of your finances in one place.</p>
     </div>
-    <div class="box expense">
-        <i class="fa fa-arrow-up"></i>
-        <div>Expense</div>
-        <span id="totalExpense">0</span>
+
+    <div class="summary">
+        <div class="box income"><div>Income</div><span id="totalIncome">0</span></div>
+        <div class="box expense"><div>Expense</div><span id="totalExpense">0</span></div>
+        <div class="box balance"><div>Balance</div><span id="balance">0</span></div>
     </div>
-    <div class="box balance">
-        <i class="fa fa-wallet"></i>
-        <div>Balance</div>
-        <span id="balance">0</span>
+
+    <button id="addTransactionBtn">Add Transaction</button>
+
+    <div class="transactionTableContainer">
+        <table class="transactionTable" id="transactionTable">
+            <thead>
+                <tr><th>Date</th><th>Title</th><th>Category</th><th>Amount</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="transactionList"></tbody>
+        </table>
+    </div>
+
+</div>
+
+
+<!-- PROFILE POPUP -->
+<div id="profilePopup" class="popup">
+    <div class="popup-content">
+        <!-- Add this div above your form in HTML -->
+   <div id="profileMsg" class="mb-3 text-center" style="display:none; color:#f44336;"></div>
+
+        <h3>My Profile</h3>
+
+        <img id="profileImage" class="profile-img" src="" alt="Profile">
+        <input type="file" id="uploadPhoto" style="display:none">
+        <button id="uploadPhotoBtn" style="background:#04AA6D;color:white;">Upload Photo</button>
+
+        <input type="text" id="profileName" placeholder="Full Name" disabled>
+        <div class="error-msg" id="nameError"></div>
+
+        <input type="email" id="profileEmail" placeholder="Email" disabled>
+        <div class="error-msg" id="emailError"></div>
+
+        <div style="position:relative;">
+            <input type="password" id="profilePassword" placeholder="Password" disabled>
+            <i class="fa fa-eye eye-icon" id="toggleProfilePassword"></i>
+        </div>
+        <div class="error-msg" id="passwordError"></div>
+
+        <button id="editProfileBtn" style="background:#0b7dda;color:white;">Edit My Profile</button>
+        <button id="saveProfileBtn" style="display:none;background:#04AA6D;color:white;">Save</button>
+        <button class="cancel" id="closeProfile" style="background:#f44336;color:white;">Close</button>
     </div>
 </div>
-<div class="filter-buttons">
-    <button class="filter-btn" data-type="all">All</button>
-    <button class="filter-btn" data-type="income">Income</button>
-    <button class="filter-btn" data-type="expense">Expense</button>
-</div>
 
 
-        <button id="addTransactionBtn">Add Transaction</button>
-    
-      <div id="transactionPopup" class="popup">
+
+<div id="transactionPopup" class="popup">
   <div class="popup-content">
     <h3>Add Transaction</h3>
-    
-    <div id="formError" style="color:red; margin-bottom:10px; display:none;"></div>
 
-    <input type="text" id="title" placeholder="Title (Income / Expense)" required>
-    <input type="number" id="amount" placeholder="Amount" required>
-    <input type="text" id="category" placeholder="Category (Food, Salary...)" required>
+    <input type="text" id="title" placeholder="Title (Income / Expense)">
+    <div class="error-msg" id="titleError"></div>
+
+    <input type="number" id="amount" placeholder="Amount">
+    <div class="error-msg" id="amountError"></div>
+
+    <input type="text" id="category" placeholder="Category (Food, Salary...)">
+    <div class="error-msg" id="categoryError"></div>
+
     <input type="date" id="date">
+    <div class="error-msg" id="dateError"></div>
 
     <button id="saveTransactionBtn">Save</button>
-    <button id="cancelPopupBtn" class="cancel">Cancel</button>
+    <button class="cancel" id="cancelPopupBtn">Cancel</button>
   </div>
 </div>
 
- <div class="transactionTableContainer">
-    <table class="transactionTable" id="transactionTable">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Amount</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="transactionList">
-            <!-- Transactions will be appended here -->
-        </tbody>
-    </table>
-</div>
-<div class="chartContainer" style="width: 100%; max-width: 600px; margin: 30px auto;">
-    <canvas id="incomeExpenseChart"></canvas>
-</div>
 
-
-    </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 $(document).ready(function() {
+
     let currentUserEmail = localStorage.getItem("loggedInUser");
+    if(!currentUserEmail) { window.location.href="index.html"; }
+
     let users = JSON.parse(localStorage.getItem("users")) || [];
     let user = users.find(u => u.email === currentUserEmail);
 
-    if(!currentUserEmail) {
-        window.location.href = "index.html";
-    }
-
     $("#welcomeUser").text(user.name);
 
-    $("#logoutBtn").click(function() {
-        localStorage.removeItem("loggedInUser");
-        window.location.href = "index.html";
-    });
-
-    // Load transactions and calculate summary on page load
     loadTransactions();
     calculateSummary();
-});
 
+    $("#logoutBtn").click(() => { localStorage.removeItem("loggedInUser"); window.location.href="index.html"; });
 
+    $("#dashboardBtn").click(() => { location.reload(); });
 
-// OPEN POPUP
-$("#addTransactionBtn").click(function(){
-    $("#transactionPopup").show();
-});
+    $("#addTransactionBtn").click(() => { $("#transactionPopup").show(); });
+    $("#saveTransactionBtn").off("click").click(function(){
 
-// CLOSE POPUP
-$("#cancelPopupBtn").click(function(){
-    $("#transactionPopup").hide();
-});
-
-$("#saveTransactionBtn").off("click").click(function(){
+    // Get values
     let title = $("#title").val().trim();
-    let amount = parseFloat($("#amount").val());
+    let amount = $("#amount").val().trim();
     let category = $("#category").val().trim();
-    let date = $("#date").val() || new Date().toISOString().split("T")[0];
-    let errorDiv = $("#formError");
+    let date = $("#date").val().trim();
 
-    // Reset error message
-    errorDiv.text('').hide();
+    // Reset error messages
+    $(".error-msg").text('');
 
-    // Validation
-    if(title === "" || amount === "" || isNaN(amount) || category === "") {
-        errorDiv.text("Please fill in all fields correctly").show();
-        return;
+    let valid = true;
+
+    // Title validation
+    if(title === "" || (title.toLowerCase() !== "income" && title.toLowerCase() !== "expense")) {
+        $("#titleError").text('Title must be "Income" or "Expense"');
+        valid = false;
     }
 
-    let titleLower = title.toLowerCase();
-    if(titleLower !== "income" && titleLower !== "expense") {
-        errorDiv.text('Title must be "Income" or "Expense"').show();
-        return;
+    // Amount validation
+    if(amount === "" || isNaN(amount) || parseFloat(amount) <= 0) {
+        $("#amountError").text('Enter a valid amount greater than 0');
+        valid = false;
     }
 
+    // Category validation
+    if(category === "") {
+        $("#categoryError").text('Category cannot be empty');
+        valid = false;
+    }
+
+    // Date validation
+    if(date === "") {
+        $("#dateError").text('Please select a date');
+        valid = false;
+    }
+
+    if(!valid) return; // stop if any validation fails
+
+    // Save transaction if all valid
     let users = JSON.parse(localStorage.getItem("users"));
-    let loggedEmail = localStorage.getItem("loggedInUser");
-    let user = users.find(u => u.email === loggedEmail);
+    let user = users.find(u=>u.email===localStorage.getItem("loggedInUser"));
 
     let transaction = {
         id: Date.now(),
         title: title,
-        amount: Math.abs(amount),  // ensure positive
+        amount: parseFloat(amount),
         category: category,
         date: date
     };
@@ -159,78 +569,164 @@ $("#saveTransactionBtn").off("click").click(function(){
     user.transactions.push(transaction);
     localStorage.setItem("users", JSON.stringify(users));
 
-    // Clear form inputs
-    $("#title").val('');
-    $("#amount").val('');
-    $("#category").val('');
-    $("#date").val('');
-    errorDiv.hide();
-
+    // Clear form
+    $("#title, #amount, #category, #date").val('');
     $("#transactionPopup").hide();
+
     loadTransactions();
     calculateSummary();
 });
 
 
+    $("#cancelPopupBtn").click(() => { $("#transactionPopup").hide(); });
+
+    $("#profileBtn").click(() => {
+        $("#profileName").val(user.name);
+        $("#profileEmail").val(user.email);
+        $("#profilePassword").val(user.password);
+        $("#profileImage").attr("src", user.image || "");
+        $("#profilePopup").show();
+    });
+
+    $("#closeProfile").click(()=> $("#profilePopup").hide());
+
+    $("#uploadPhotoBtn").click(()=> $("#uploadPhoto").click());
+
+    $("#uploadPhoto").change(function(e){
+        let file = e.target.files[0];
+        let reader = new FileReader();
+        reader.onload = function(){
+            $("#profileImage").attr("src", reader.result);
+            user.image = reader.result;
+            localStorage.setItem("users", JSON.stringify(users));
+        }
+        reader.readAsDataURL(file);
+    });
+
+    $("#editProfileBtn").click(function(){
+    $("#profileName, #profileEmail, #profilePassword").prop("disabled", false);
+    $("#saveProfileBtn").show();
+});
+
+// Toggle password visibility
+$("#toggleProfilePassword").click(function(){
+    let input = $("#profilePassword");
+    input.attr("type", input.attr("type")==="password"?"text":"password");
+});
+
+$("#saveProfileBtn").click(function(){
+    // Clear previous messages
+    $(".error-msg").text('');
+    $("#profileMsg").hide();
+
+    let valid = true;
+    let name = $("#profileName").val().trim();
+    let email = $("#profileEmail").val().trim();
+    let password = $("#profilePassword").val().trim();
+
+    // Name validation
+    if(name === "") {
+        $("#nameError").text("Name cannot be empty");
+        valid = false;
+    }
+
+    // Email validation
+    const emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
+    if(email === "" || !emailPattern.test(email)) {
+        $("#emailError").text("Enter a valid email");
+        valid = false;
+    }
+
+    // Password validation
+    if(password === "" || password.length < 6) {
+        $("#passwordError").text("Password must be at least 6 characters");
+        valid = false;
+    }
+
+    if(!valid) return;
+
+    // Get users from localStorage
+    let users = JSON.parse(localStorage.getItem("users") || "[]");
+    let loggedEmail = localStorage.getItem("loggedInUser");
+    let user = users.find(u => u.email === loggedEmail);
+
+    if(!user){
+        $("#profileMsg").text("Error: User not found!").removeClass("text-success").addClass("text-danger").show();
+        return;
+    }
+
+    // Update user
+    user.name = name;
+    user.email = email;
+    user.password = password;
+
+    localStorage.setItem("users", JSON.stringify(users));
+    localStorage.setItem("loggedInUser", email);
+
+    // Disable inputs and hide save button
+    $("#profileName, #profileEmail, #profilePassword").prop("disabled", true);
+    $("#saveProfileBtn").hide();
+
+    // Show top success message
+    $("#profileMsg").text("Profile updated successfully!").removeClass("text-danger").addClass("text-success").show();
+});
+
+
+    $("#exportJsonBtn").click(()=>{
+        let transactions = user.transactions;
+        let data = JSON.stringify(transactions, null, 2);
+        let blob = new Blob([data], {type:"application/json"});
+        saveAs(blob, "transactions.json");
+    });
+
+    $("#exportExcelBtn").click(()=>{
+        let ws = XLSX.utils.json_to_sheet(user.transactions);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+        XLSX.writeFile(wb, "transactions.xlsx");
+    });
+
+});
 
 function loadTransactions() {
     let users = JSON.parse(localStorage.getItem("users"));
     let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
 
     $("#transactionList").empty();
-
-  user.transactions.forEach(tr => {
-    $("#transactionList").append(`
-        <tr>
-            <td>${tr.date}</td>
-            <td>${tr.title}</td>
-            <td>${tr.category}</td>
-            <td class="${tr.amount > 0 ? 'amount-positive' : 'amount-negative'}">₹${tr.amount}</td>
-            <td>
-                <button class="edit-btn" onclick="editTransaction(${tr.id})">Edit</button>
-                <button class="delete-btn" onclick="deleteTransaction(${tr.id})">Delete</button>
-            </td>
-        </tr>
-    `);
-});
-
+    user.transactions.forEach(tr => {
+        $("#transactionList").append(`
+            <tr>
+                <td>${tr.date}</td>
+                <td>${tr.title}</td>
+                <td>${tr.category}</td>
+                <td class="${tr.title.toLowerCase()==='income'?'amount-positive':'amount-negative'}">₹${tr.amount}</td>
+                <td><button class="edit-btn" onclick="editTransaction(${tr.id})">Edit</button>
+                <button class="delete-btn" onclick="deleteTransaction(${tr.id})">Delete</button></td>
+            </tr>
+        `);
+    });
     calculateSummary();
 }
-
 
 function calculateSummary() {
     let users = JSON.parse(localStorage.getItem("users"));
     let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
 
     let income = 0, expense = 0;
-
     user.transactions.forEach(tr => {
-        let titleLower = tr.title.toLowerCase();
-        if (titleLower === "income") {
-            income += tr.amount;
-        } else if (titleLower === "expense") {
-            expense += tr.amount; // assuming amount is positive
-        }
+        if(tr.title.toLowerCase()==="income") income+=tr.amount;
+        else expense+=tr.amount;
     });
 
-    let balance = income - expense;
-
-    $("#totalIncome").text(income.toFixed(2));
-    $("#totalExpense").text(expense.toFixed(2));
-    $("#balance").text(balance.toFixed(2));
-    // renderChart(income, expense);
+    $("#totalIncome").text(income);
+    $("#totalExpense").text(expense);
+    $("#balance").text(income-expense);
 }
-
-
-
-
 
 function deleteTransaction(id){
     let users = JSON.parse(localStorage.getItem("users"));
     let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
-
-    user.transactions = user.transactions.filter(t => t.id !== id);
-
+    user.transactions = user.transactions.filter(t=>t.id!==id);
     localStorage.setItem("users", JSON.stringify(users));
     loadTransactions();
     calculateSummary();
@@ -239,7 +735,7 @@ function deleteTransaction(id){
 function editTransaction(id){
     let users = JSON.parse(localStorage.getItem("users"));
     let user = users.find(u => u.email === localStorage.getItem("loggedInUser"));
-    let tr = user.transactions.find(t => t.id === id);
+    let tr = user.transactions.find(t=>t.id===id);
 
     $("#transactionPopup").show();
     $("#title").val(tr.title);
@@ -247,77 +743,18 @@ function editTransaction(id){
     $("#category").val(tr.category);
     $("#date").val(tr.date);
 
-    // Remove previous click handler first
     $("#saveTransactionBtn").off("click").click(function(){
-        tr.title = $("#title").val().trim();
+        tr.title = $("#title").val();
         tr.amount = parseFloat($("#amount").val());
-        tr.category = $("#category").val().trim();
+        tr.category = $("#category").val();
         tr.date = $("#date").val();
 
         localStorage.setItem("users", JSON.stringify(users));
         $("#transactionPopup").hide();
         loadTransactions();
         calculateSummary();
-
-        resetTransactionForm(); // clear form after editing
-        
     });
 }
-
-
-function resetTransactionForm() {
-    $("#title").val('');
-    $("#amount").val('');
-    $("#category").val('');
-    $("#date").val('');
-}
-
-$(".filter-btn").click(function(){
-    let type = $(this).data("type");
-    $("#transactionList tr").show();
-    if(type !== "all") {
-        $("#transactionList tr").each(function(){
-            let title = $(this).find("td:eq(1)").text().toLowerCase();
-            if(title !== type) $(this).hide();
-        });
-    }
-});
-
-let chart; // global chart variable
-
-function renderChart(income, expense) {
-    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-
-    if(chart) {
-        chart.destroy(); // destroy previous chart if it exists
-    }
-
-    chart = new Chart(ctx, {
-        type: 'doughnut', // or 'bar', 'pie', etc.
-        data: {
-            labels: ['Income', 'Expense'],
-            datasets: [{
-                label: 'Amount',
-                data: [income, expense],
-                backgroundColor: ['#04AA6D', '#f44336'],
-                borderColor: ['#ffffff', '#ffffff'],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-
-
-
 </script>
 
 </body>
