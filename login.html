@@ -1,52 +1,165 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Budget Tracker</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.auth-container {
+    background: #fff;
+    padding: 35px 30px;
+    border-radius: 12px;
+    width: 350px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #333;
+}
+
+input {
+    width: 90%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    outline: none;
+}
+
+input.error {
+    border-color: red;
+}
+
+.error-message {
+    color: red;
+    font-size: 13px;
+    text-align: left;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    margin-top: 18px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #43A047;
+}
+
+a {
+    color: #4CAF50;
+    text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+#loginMessage {
+    text-align: center;
+    color: red;
+    margin-top: 12px;
+}
+</style>
 </head>
-<body class="auth-page">
-    <div class="auth-container" id="auth-container">
-        <h2>Login</h2>
-        <form id="loginForm">
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Password" required>
-            <p id="loginMessage" style="color:red;"></p>
-            <button type="submit">Login</button>
-        </form>
-        <p>Don't have an account? <a href="./signup.html">Signup</a></p>
-    </div>
+<body>
+<div class="auth-container">
+    <h2>Login</h2>
+
+    <form id="loginForm">
+
+        <input type="text" id="email" placeholder="Email">
+        <p id="emailError" class="error-message"></p>
+
+        <input type="password" id="password" placeholder="Password">
+        <p id="passwordError" class="error-message"></p>
+
+        <button type="submit">Login</button>
+        <p id="loginMessage"></p>
+
+    </form>
+    <p>Don't have an account? <a href="signup.html">Signup</a></p>
+</div>
+
 <script>
 $(document).ready(function(){
+
+    function validateEmail(){
+        let email = $("#email").val().trim();
+        let regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if(email === ""){
+            $("#emailError").text("Email is required");
+            $("#email").addClass("error");
+            return false;
+        } else if(!regex.test(email)){
+            $("#emailError").text("Enter a valid email address");
+            $("#email").addClass("error");
+            return false;
+        }
+        $("#emailError").text("");
+        $("#email").removeClass("error");
+        return true;
+    }
+
+    function validatePassword(){
+        let password = $("#password").val().trim();
+        if(password === ""){
+            $("#passwordError").text("Password is required");
+            $("#password").addClass("error");
+            return false;
+        }
+        $("#passwordError").text("");
+        $("#password").removeClass("error");
+        return true;
+    }
+
+    $("#email").on("blur keyup", validateEmail);
+    $("#password").on("blur keyup", validatePassword);
+
     $("#loginForm").submit(function(e){
         e.preventDefault();
+
+        if(!validateEmail() | !validatePassword()) return;
+
         let email = $("#email").val().trim();
-        let password = $("#password").val();
+        let password = $("#password").val().trim();
 
         let users = JSON.parse(localStorage.getItem("users")) || [];
+        let user = users.find(u => u.email === email);
 
-        // Check if user email exists first
-        let userExists = users.some(u => u.email === email);
-
-        if(!userExists){
+        if(!user){
             $("#loginMessage").text("User does not exist. Please signup.");
             return;
         }
 
-        // Validate password for existing user
-        let user = users.find(u => u.email === email && u.password === password);
-
-        if(user){
-            localStorage.setItem("loggedInUser", email);
-            window.location.href = "dashboard.html";
-        } else {
+        if(user.password !== password){
             $("#loginMessage").text("Incorrect password!");
+            return;
         }
+
+        localStorage.setItem("loggedInUser", email);
+        window.location.href = "./dashboard.html";
     });
 });
 </script>
-
 </body>
 </html>
